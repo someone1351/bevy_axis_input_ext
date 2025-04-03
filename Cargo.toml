@@ -1,0 +1,23 @@
+[package]
+name = "bevy_axis_inputx"
+version = "0.1.2"
+edition = "2021"
+
+[dependencies]
+bevy = { version = "0.15.0", default-features = false, features = [ "serialize", ] }
+serde = { version = "1.0", features = ["derive"] }
+ron = "0.8.1"
+
+conf_lang = {path = "../conf_lang"}
+bevy_axis_input = {path = "../bevy_axis_input"}
+
+[dev-dependencies]
+bevy = { version = "0.15.0", default-features = false, features = ["bevy_window","x11","bevy_asset","bevy_render","bevy_text","bevy_ui","bevy_gilrs"] }
+
+[lib]
+name = "bevy_axis_inputx"
+path = "src/lib.rs"
+
+[[example]]
+name = "test"
+path = "examples/test.rs"

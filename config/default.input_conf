@@ -1,0 +1,57 @@
+bind_mode_dead 0.3 0.3
+
+scale "game"
+	X 1
+
+dead "ui" "gamepad"
+	MenuUp 0.2 0.2
+
+repeat
+    MenuUp 0.3 0.3
+
+binding "ui"
+	Quit
+		Key(F4)
+	MenuUp
+		Key(ArrowUp)
+		Key(ArrowDown) -1
+		GamepadButton(DPadUp)
+		GamepadButton(DPadDown) -1
+		GamepadAxis(LeftStickY)
+		GamepadAxis(RightStickY)
+	MenuSelect
+		Key(Enter)
+		GamepadButton(South)
+	MenuCancel
+		Key(Escape)
+		GamepadButton(Select)
+
+binding "game"
+	X
+		Key(KeyW)
+		Key(KeyS) -1
+	Y
+		Key(Space)
+
+
+exclude
+	Key(Escape)
+	Key(F4)
+	Key(ArrowUp)
+	Key(ArrowDown)
+	Key(Enter)
+
+	GamepadAxis(LeftStickX)
+	GamepadAxis(LeftStickY)
+	GamepadAxis(RightStickX)
+	GamepadAxis(RightStickY)
+
+	GamepadButton(Select)
+	GamepadButton(Start)
+
+	MouseMoveX
+	MouseMoveY
+	MouseMovePosX
+	MouseMovePosY
+	MouseMoveNegX
+	MouseMoveNegY

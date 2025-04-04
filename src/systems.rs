@@ -46,8 +46,8 @@ pub fn update<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Any+Clone+ToString>( //+Debu
     mut input_config: ResMut<InputConfig<M>>,
     mut input_map : ResMut<axis_input::InputMap<M>>,
 ) {
-    if input_config.config_updated {
-        input_config.config_updated=false;
+    if input_config.do_save {
+        input_config.do_save=false;
 
         if save_input_data(&input_config.user_data,&input_config.user_file) {
             println!("Input config file saved: {:?}.",input_config.user_file);

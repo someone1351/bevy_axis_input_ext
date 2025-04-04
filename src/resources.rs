@@ -25,6 +25,7 @@ pub struct InputConfig<M:Send+Sync+Hash+PartialEq+Eq+FromStr> {
 
     pub config_updated : bool,
     pub bindings_updated : bool,
+    pub do_save : bool,
     // pub user_data_addeds : HashMap<(M,Vec<axis_input::Binding>),(f32,f32,f32)>,
     // pub user_data_removeds : HashSet<(M,Vec<axis_input::Binding>),(f32,f32,f32)>,
 
@@ -51,6 +52,7 @@ impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> Default for InputConfig<M> {
             config_updated: false,
             bindings_updated: false,
             owner_profiles: Default::default(),
+            do_save : false,
         }
     }
 }
@@ -59,6 +61,17 @@ impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> Default for InputConfig<M> {
 */
 
 impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> InputConfig<M> {
+    //
+    pub fn save(&mut self) {
+        if self.config_updated {
+            self.do_save=true;
+            self.config_updated=false;
+        }
+    }
+
+    pub fn is_updated(&self) -> bool {
+        self.config_updated
+    }
 
     //
     pub fn get_excludes(&self) -> HashSet<Binding> {

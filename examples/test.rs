@@ -173,6 +173,7 @@ fn update_input(
                     }
                 }
 
+                input_config.save();
 
             }
             axis_input::InputMapEvent::JustPressed{mapping:Mapping::MenuCancel, ..} => {
@@ -199,6 +200,7 @@ fn update_input(
                             continue;
                         }
                     }
+                    input_config.save();
                 }
             }
 

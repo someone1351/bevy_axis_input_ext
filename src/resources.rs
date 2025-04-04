@@ -257,6 +257,7 @@ impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> InputConfig<M> {
         scales.insert(mapping,scale);
 
         self.config_updated=true;
+        self.bindings_updated=true;
     }
 
     pub fn set_dead<P,S>(&mut self,profile : P,mapping:M,primary_dead:f32,modifier_dead:f32)
@@ -276,6 +277,7 @@ impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> InputConfig<M> {
         deads.insert(mapping,(primary_dead,modifier_dead));
 
         self.config_updated=true;
+        self.bindings_updated=true;
     }
 
     pub fn set_binding<P,S,B>(&mut self,profile : P,mapping:M,binding_ind:usize,bindings:B,scale:f32)
@@ -296,10 +298,14 @@ impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> InputConfig<M> {
             .entry(profile).or_default()
             .entry(mapping).or_default();
 
-        user_bindings.resize(binding_ind+1, Default::default());
+        if user_bindings.len() < binding_ind+1 {
+            user_bindings.resize(binding_ind+1, Default::default());
+        }
+
         user_bindings[binding_ind]=(bindings.into_iter().collect(),scale);
 
         self.config_updated=true;
+        self.bindings_updated=true;
     }
 
     //

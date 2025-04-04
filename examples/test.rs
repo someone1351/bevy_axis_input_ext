@@ -177,14 +177,11 @@ fn update_input(
             }
             axis_input::InputMapEvent::JustPressed{mapping:Mapping::MenuCancel, ..} => {
                 if menu.in_bind_mode {
-                    // input_map.set_bind_mode_devices([]);
-                    // input_map.bind_mode_devices.clear(); //todo!
-
                     if let Ok((entity,_owner)) = gamepad_owner_query.get_single() {
                         commands.entity(entity).entry::<axis_input::GamepadBindMode>().and_modify(|mut c|{c.0=false;});
                     }
-                    input_map.kbm_bind_mode=false;
 
+                    input_map.kbm_bind_mode=false;
                     menu.in_bind_mode=false;
                 } else {
                     //

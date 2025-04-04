@@ -1,0 +1,6 @@
+binding "game"
+    X
+        Key(KeyY) 1
+    Y
+        Key(Space) 1
+

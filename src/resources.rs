@@ -327,7 +327,7 @@ impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> InputConfig<M> {
 
     }
 
-    pub fn get_binding<P,S,B>(&self,profile : P,mapping:M,binding_ind:usize) -> Option<(Vec<axis_input::Binding>,f32)>
+    pub fn get_binding<P,S>(&self,profile : P,mapping:M,binding_ind:usize) -> (Vec<axis_input::Binding>,f32)
     where
         P:IntoIterator<Item = S>,
         S:AsRef<str>,
@@ -338,6 +338,7 @@ impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> InputConfig<M> {
             .and_then(|x|x.get(&mapping))
             .and_then(|x|x.get(binding_ind))
             .cloned()
+            .unwrap_or_default()
     }
 
 

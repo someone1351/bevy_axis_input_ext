@@ -86,47 +86,19 @@ fn update_input(
     mut menu : ResMut<Menu>,
     mut input_map: ResMut<axis_input::InputMap<Mapping>>,
     mut input_config: ResMut<axis_inputx::InputConfig<Mapping>>,
-
-    // mut gamepad_events: EventReader<GamepadEvent>,
     mut commands: Commands,
-
-
     gamepad_owner_query: Query<(Entity,&axis_input::GamepadOwner,)>,
-
     gamepad_ownerless_query:Query<Entity,(With<Gamepad>,Without<axis_input::GamepadOwner>)>,
-    // gamepad_query:Query<Entity,With<Gamepad>>,
-
-    // mut cur_bind_mode_binds : ResMut<CurBindModeBinds>,
 ) {
-    // println!("gamepad_owner_query {}",gamepad_owner_query.iter().count());
-    // println!("gamepad_ownerless_query {}",gamepad_ownerless_query.iter().count());
-    // println!("gamepad_query {}",gamepad_query.iter().count());
 
     for entity in gamepad_ownerless_query.iter() {
         commands.entity(entity).insert(axis_input::GamepadOwner(0));
     }
-    // for event in gamepad_events.read() {
-    //     match event {
-    //         GamepadEvent::Connection(GamepadConnectionEvent{gamepad,connection:GamepadConnection::Connected {name, ..}})=> {
-    //             println!("Gamepad connected: {gamepad} {name:?}");
-    //             // commands.entity(*gamepad).entry().or_insert(axis_input::GamepadOwner(0));
-    //             commands.entity(*gamepad).insert(axis_input::GamepadOwner(0));
-    //         }
-    //         GamepadEvent::Connection(GamepadConnectionEvent{gamepad,connection:GamepadConnection::Disconnected})=> {
-    //             println!("Gamepad disconnected: {gamepad}");
-    //         }
-    //         _ => {}
-    //     }
-    // }
+
 
     for ev in input_map_event.read() {
         match ev.clone() {
-            // axis_input::InputMapEvent::GamepadConnect { entity, index, name, vendor_id, product_id } => {
-            //     println!("Gamepad connected: {entity} {index} {name:?} {vendor_id:?} {product_id:?}");
-            // }
-            // axis_input::InputMapEvent::GamepadDisconnect { entity, index, name, vendor_id, product_id } => {
-            //     println!("Gamepad disconnected: {entity} {index} {name:?} {vendor_id:?} {product_id:?}");
-            // }
+
             axis_input::InputMapEvent::ValueChanged { mapping:Mapping::X, val, .. } => {
                 menu.x_val=val;
             }
@@ -153,19 +125,11 @@ fn update_input(
                 if let Some(pressed)=menu.pressed {
                     match pressed {
                         0..=2 => { //X+ X- Y
-                            // input_map.set_bind_mode_devices([axis_input::Device::Other,axis_input::Device::Gamepad(0)]);
-
-                            // input_map.bind_mode_devices=HashSet::from_iter([axis_input::Device::Other,axis_input::Device::Gamepad(0)]); //todo!
-
                             if let Ok((entity,_owner)) = gamepad_owner_query.get_single() {
                                 commands.entity(entity).entry().or_insert(axis_input::GamepadBindMode(true));
-
-                                // commands.entity(entity).insert(axis_input::GamepadBindMode(true));
-                                // println!("ok!");
                             }
-                                input_map.kbm_bind_mode=true;
-                            // commands.entity(entity)
 
+                            input_map.kbm_bind_mode=true;
                             menu.in_bind_mode=true;
                             println!("bind mode start");
                         }
@@ -193,31 +157,22 @@ fn update_input(
 
                 menu.in_bind_mode=false;
 
-                let (mapping,last_bind)=match menu.cur_index {
-                    0 => {
-                        let last_bind=cur_binds.x_pos.clone();
-                        cur_binds.x_pos=bindings.clone();
-                        (Mapping::X,last_bind)
+                //
+                match menu.cur_index {
+                    0 => {//x+
+                        input_config.set_binding(["game"], Mapping::X, 0, bindings.clone(), 1.0);
                     },
-                    1 => {
-                        let last_bind=cur_binds.x_neg.clone();
-                        cur_binds.x_neg=bindings.clone();
-                        (Mapping::X,last_bind)
+                    1 => {//x-
+                        input_config.set_binding(["game"], Mapping::X, 1, bindings.clone(), -1.0);
                     },
-                    2 => {
-                        let last_bind=cur_binds.y.clone();
-                        cur_binds.y=bindings.clone();
-                        (Mapping::Y,last_bind)
+                    2 => { //y
+                        input_config.set_binding(["game"], Mapping::Y, 0, bindings.clone(), 1.0);
                     },
                     _ =>{
                         continue;
                     }
-                };
+                }
 
-                let cur_bindings=input_map.owner_bindings.get_mut(&0).unwrap();
-                let attribs=cur_bindings.remove(&(mapping.clone(),last_bind)).unwrap(); //hmm crash? because binding same mapping twice, which overwrites each other
-                cur_bindings.insert((mapping,bindings.clone()), attribs);
-                input_map.bindings_updated=true;
 
             }
             axis_input::InputMapEvent::JustPressed{mapping:Mapping::MenuCancel, ..} => {
@@ -232,29 +187,21 @@ fn update_input(
 
                     menu.in_bind_mode=false;
                 } else {
-                    let (mapping,last_bind)=match menu.cur_index {
-                        0 => {
-                            let last_bind=cur_binds.x_pos.clone();
-                            cur_binds.x_pos=vec![];
-                            (Mapping::X,last_bind)
+                    //
+                    match menu.cur_index {
+                        0 => {//x+
+                            input_config.set_binding(["game"], Mapping::X, 0, vec![], 1.0);
                         },
-                        1 => {
-                            let last_bind=cur_binds.x_neg.clone();
-                            cur_binds.x_neg=vec![];
-                            (Mapping::X,last_bind)
+                        1 => {//x-
+                            input_config.set_binding(["game"], Mapping::X, 1, vec![], -1.0);
                         },
-                        2 => {
-                            let last_bind=cur_binds.y.clone();
-                            cur_binds.y=vec![];
-                            (Mapping::Y,last_bind)
+                        2 => { //y
+                            input_config.set_binding(["game"], Mapping::Y, 0, vec![], 1.0);
                         },
                         _ =>{
                             continue;
                         }
-                    };
-
-                    input_map.owner_bindings.get_mut(&0).unwrap().remove(&(mapping,last_bind)).unwrap();
-                    input_map.bindings_updated=true;
+                    }
                 }
             }
 
@@ -323,7 +270,7 @@ fn setup_menu(
 fn show_menu(
     mut marker_query: Query<(&MenuItem, &mut TextSpan, &mut TextColor)>,
     menu : Res<Menu>,
-    mut input_config: ResMut<axis_inputx::InputConfig<Mapping>>,
+    input_config: Res<axis_inputx::InputConfig<Mapping>>,
 
     mut bind_mode_chain : Local<Vec<Binding>>,
 
@@ -372,7 +319,8 @@ fn show_menu(
                             format!("{:?}",bind_mode_chain.clone())
                         }
                     }else{
-                        format!("{:?}",cur_binds.x_pos)
+                        // format!("{:?}",cur_binds.x_pos)
+                        format!("{:?}",input_config.get_binding(["game"], Mapping::X, 0).0)
                     }
                 );
             }
@@ -385,7 +333,8 @@ fn show_menu(
                             format!("{:?}",bind_mode_chain.clone())
                         }
                     }else{
-                        format!("{:?}",cur_binds.x_neg)
+                        // format!("{:?}",cur_binds.x_neg)
+                        format!("{:?}",input_config.get_binding(["game"], Mapping::X, 1).0)
                     }
                 );
             }
@@ -398,7 +347,8 @@ fn show_menu(
                             format!("{:?}",bind_mode_chain.clone())
                         }
                     }else{
-                        format!("{:?}",cur_binds.y)
+                        // format!("{:?}",cur_binds.y)
+                        format!("{:?}",input_config.get_binding(["game"], Mapping::Y, 0).0)
                     }
                 );
             }

@@ -99,7 +99,13 @@ pub fn update<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Any+Clone+ToString>( //+Debu
                 let mapping_bindings=input_config.get_bindings(&profile);
 
                 for (mapping,binding_group_scales) in mapping_bindings {
+                    let mut binding_group_scales2: HashMap<Vec<bevy_axis_input::Binding>, f32> = HashMap::new();
+
                     for (binding_group,scale) in binding_group_scales {
+                        *binding_group_scales2.entry(binding_group).or_default()+=scale;
+                    }
+
+                    for (binding_group,scale) in binding_group_scales2 {
                         let k =(mapping.clone(),binding_group.iter().map(|x|x.clone()).collect::<Vec<_>>());
                         // println!("bg {binding_group:?}");
 
@@ -128,6 +134,7 @@ pub fn update<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Any+Clone+ToString>( //+Debu
                                     break;
                                 }
                             }
+
 
                             bindings_out.insert(k, (scale*scale2,primary_dead,modifier_dead));
                         }

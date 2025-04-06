@@ -1,5 +1,9 @@
 bind_mode_dead 0.3 0.3
 
+owner 0
+	"ui"
+	"game"
+
 scale "game"
 	X 1
 

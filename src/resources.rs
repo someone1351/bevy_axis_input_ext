@@ -6,53 +6,47 @@ use bevy::ecs::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::path::PathBuf;
-use std::str::FromStr;
 // use super::assets::*;
 use super::values::InputData;
 use bevy_axis_input::{self as axis_input, Binding};
 
 #[derive(Resource,)]
-pub struct InputConfig<M:Send+Sync+Hash+PartialEq+Eq+FromStr> {
+pub struct InputConfig<M:Send+Sync+Hash> {
     pub default_file : PathBuf,
     pub user_file : PathBuf,
-    // pub default_asset:Handle<InputAsset>,
-    // pub user_asset:Handle<InputAsset>,
-    // pub default_loaded:bool,
-    // pub user_loaded:bool,
+
     pub default_data:InputData<M>,
     pub user_data:InputData<M>,
-    // pub cur_data:InputData<M>,
+    pub last_user_data:InputData<M>,
 
-    pub config_updated : bool,
-    pub bindings_updated : bool,
+    // pub modified:bool,
+    pub unapplied:bool,
+    pub unsaved:bool,
+
     pub do_save : bool,
-    // pub user_data_addeds : HashMap<(M,Vec<axis_input::Binding>),(f32,f32,f32)>,
-    // pub user_data_removeds : HashSet<(M,Vec<axis_input::Binding>),(f32,f32,f32)>,
+    pub do_apply : bool,
 
-
-
-    // pub excludes:HashSet<axis_input::Binding>, //[binding]
-    // pub repeats:HashMap<M,f32>, //[mapping]=repeat
-    // pub inverts:HashMap<Vec<String>,HashMap<M,bool>>, //[profile][mapping]=invert
-    // pub scales:HashMap<Vec<String>,HashMap<M,f32>>, //[profile][mapping]=scale
-
-    // //[profile][mapping][bind_ind]=(bindings,scale,primary_dead,modfier_dead)
-    // pub bindings : HashMap<Vec<String>,HashMap<M,Vec<(Vec<axis_input::Binding>,f32,f32,f32)>>>,
-    // pub owner_bindings : HashMap<i32,HashMap<(M,Vec<axis_input::Binding>),(f32,f32,f32)>>, //[owner][mapping,bindings]=(scale,primary_dead,modifier_dead)
-    pub owner_profiles : HashMap<i32,HashSet<Vec<String>>>, //[owner]=profiles
+    // pub owner_profiles : HashMap<i32,HashSet<Vec<String>>>, //[owner]=profiles
 }
 
-impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> Default for InputConfig<M> {
+impl<M:Send+Sync+Hash+Clone> Default for InputConfig<M> {
     fn default() -> Self {
         Self {
             default_file: Default::default(),
             user_file: Default::default(),
+
             default_data: Default::default(),
             user_data: Default::default(),
-            config_updated: false,
-            bindings_updated: false,
-            owner_profiles: Default::default(),
+
+            last_user_data: Default::default(),
+            // owner_profiles: Default::default(),
+
+            // modified:false,
+            unapplied:false,
+            unsaved:false,
+
             do_save : false,
+            do_apply : false,
         }
     }
 }
@@ -60,17 +54,48 @@ impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> Default for InputConfig<M> {
 * don't bother with implementing funcs for repeats, excludes, deads, can just have the user set them from the files
 */
 
-impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> InputConfig<M> {
+impl<M:Send+Sync+Hash+Eq+Clone> InputConfig<M> {
     //
-    pub fn save(&mut self) {
-        if self.config_updated {
-            self.do_save=true;
-            self.config_updated=false;
+    pub fn apply(&mut self) {
+        if self.unapplied && !self.do_apply {
+            // self.modified=false;
+            self.unapplied=false;
+            self.do_apply=true;
         }
     }
 
-    pub fn is_updated(&self) -> bool {
-        self.config_updated
+    pub fn save(&mut self) {
+        if self.unsaved && !self.do_save {
+            if self.unapplied {
+                self.unapplied=false;
+                self.do_apply=true;
+            }
+
+            self.unsaved=false;
+            self.do_save=true;
+
+            self.last_user_data=self.user_data.clone();
+        }
+    }
+
+    pub fn restore(&mut self) {
+        if self.unapplied || self.unsaved {
+            if !self.unapplied {
+                self.do_apply=true;
+            }
+
+            self.unapplied=false;
+            self.unsaved=false;
+            self.user_data=self.last_user_data.clone();
+        }
+    }
+
+    pub fn is_applied(&self) -> bool {
+        !self.unapplied
+    }
+
+    pub fn is_saved(&self) -> bool {
+        !self.unsaved
     }
 
     //
@@ -111,18 +136,32 @@ impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> InputConfig<M> {
         S:AsRef<str>,
     {
         let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
-        self.user_data.scales.get(&profile).or_else(||self.default_data.scales.get(&profile)).cloned().unwrap_or_default()
+        let mut h=self.user_data.scales.get(&profile).cloned().unwrap_or_default();
 
+        for (profile,&scale) in self.default_data.scales.get(&profile).map(|x|x.iter()).unwrap_or_default() {
+            if !h.contains_key(profile) {
+                h.insert(profile.clone(), scale);
+            }
+        }
+
+        h
     }
 
-    //
     pub fn get_deads<P,S>(& self,profile : P) -> HashMap<M,(f32,f32)>
     where
         P:IntoIterator<Item = S>,
         S:AsRef<str>,
     {
         let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
-        self.user_data.deads.get(&profile).or_else(||self.default_data.deads.get(&profile)).cloned().unwrap_or_default()
+        let mut h=self.user_data.deads.get(&profile).cloned().unwrap_or_default();
+
+        for (profile,&dead) in self.default_data.deads.get(&profile).map(|x|x.iter()).unwrap_or_default() {
+            if !h.contains_key(profile) {
+                h.insert(profile.clone(), dead);
+            }
+        }
+
+        h
     }
 
     pub fn get_bindings<P,S>(& self,profile : P) -> HashMap<M,Vec<(Vec<axis_input::Binding>,f32)>>
@@ -131,194 +170,27 @@ impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> InputConfig<M> {
         S:AsRef<str>,
     {
         let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
-        self.user_data.bindings.get(&profile).or_else(||self.default_data.bindings.get(&profile)).cloned().unwrap_or_default()
-    }
+        let mut h=self.user_data.bindings.get(&profile).cloned().unwrap_or_default();
 
-    //
-    pub fn owner_insert_profile<P,S>(&mut self,owner:i32,profile : P)
-    where
-        P:IntoIterator<Item = S>,
-        S:AsRef<str>,
-    {
-        let profile: Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
-        self.owner_profiles.entry(owner).or_default().insert(profile);
-
-        // self.config_updated=true;
-        self.bindings_updated=true;
-    }
-
-    pub fn owner_remove_profile<P,S>(&mut self,owner:i32,profile : P)
-    where
-        P:IntoIterator<Item = S>,
-        S:AsRef<str>,
-    {
-
-        if let Some(profiles)=self.owner_profiles.get_mut(&owner) {
-            let profile: Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
-            profiles.remove(&profile);
-
-            if profiles.is_empty() {
-                self.owner_profiles.remove(&owner).unwrap();
+        for (profile,binding_scales) in self.default_data.bindings.get(&profile).map(|x|x.iter()).unwrap_or_default() {
+            if !h.contains_key(profile) {
+                h.insert(profile.clone(), binding_scales.clone());
             }
         }
 
-        // self.config_updated=true;
-        self.bindings_updated=true;
+        h
     }
 
-    pub fn owner_clear_profiles(&mut self,owner:i32) {
-        self.owner_profiles.remove(&owner);
+    pub fn get_owners_profiles(& self) -> HashMap<i32,HashSet<Vec<String>>> {
+        let mut h=self.user_data.owners_profiles.clone();
 
-        // self.config_updated=true;
-        self.bindings_updated=true;
-    }
-
-    //
-    pub fn new_scales_profile<P,F,S,T>(&mut self,profile:P, from_profile : Option<F>, )
-    where
-        P:IntoIterator<Item = S>,
-        F:IntoIterator<Item = T>,
-        S:AsRef<str>,
-        T:AsRef<str>,
-    {
-        let from_profile:Option<Vec<String>>=from_profile.map(|y|y.into_iter().map(|x|x.as_ref().to_string()).collect());
-        let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
-
-        let new_scales=if let Some(from_profile)=from_profile {
-            if let Some(x)=self.user_data.scales.get(&from_profile) {
-                Some(x)
-            } else if let Some(x)=self.default_data.scales.get(&from_profile) {
-                Some(x)
-            } else {
-                None
-            }
-        } else {
-            None
-        }.cloned().unwrap_or_default();
-
-        self.user_data.scales.insert(profile,new_scales);
-        self.config_updated=true;
-    }
-
-    pub fn new_deads_profile<P,F,S,T>(&mut self,profile:P, from_profile : Option<F>, )
-    where
-        P:IntoIterator<Item = S>,
-        F:IntoIterator<Item = T>,
-        S:AsRef<str>,
-        T:AsRef<str>,
-    {
-        let from_profile:Option<Vec<String>>=from_profile.map(|y|y.into_iter().map(|x|x.as_ref().to_string()).collect());
-        let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
-
-        let new_deads=if let Some(from_profile)=from_profile {
-            if let Some(x)=self.user_data.deads.get(&from_profile) {
-                Some(x)
-            } else if let Some(x)=self.default_data.deads.get(&from_profile) {
-                Some(x)
-            } else {
-                None
-            }
-        } else {
-            None
-        }.cloned().unwrap_or_default();
-
-        self.user_data.deads.insert(profile,new_deads);
-        self.config_updated=true;
-    }
-
-    pub fn new_bindings_profile<P,F,S,T>(&mut self,profile:P, from_profile : Option<F>, )
-    where
-        P:IntoIterator<Item = S>,
-        F:IntoIterator<Item = T>,
-        S:AsRef<str>,
-        T:AsRef<str>,
-    {
-        let from_profile:Option<Vec<String>>=from_profile.map(|y|y.into_iter().map(|x|x.as_ref().to_string()).collect());
-        let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
-
-        let new_bindings=if let Some(from_profile)=from_profile {
-            if let Some(x)=self.user_data.bindings.get(&from_profile) {
-                Some(x)
-            } else if let Some(x)=self.default_data.bindings.get(&from_profile) {
-                Some(x)
-            } else {
-                None
-            }
-        } else {
-            None
-        }.cloned().unwrap_or_default();
-
-        self.user_data.bindings.insert(profile,new_bindings);
-        self.config_updated=true;
-    }
-
-    //
-    pub fn set_scale<P,S>(&mut self,profile : P,mapping:M,scale:f32)
-    where
-        P:IntoIterator<Item = S>,
-        S:AsRef<str>,
-    {
-        let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
-
-        if !self.user_data.scales.contains_key(&profile) {
-            if let Some(default_scales)=self.default_data.scales.get(&profile).cloned() {
-                self.user_data.scales.insert(profile.clone(), default_scales);
+        for (&profile,profiles) in self.default_data.owners_profiles.iter() {
+            if !h.contains_key(&profile) {
+                h.insert(profile, profiles.clone());
             }
         }
 
-        let scales=self.user_data.scales.entry(profile).or_default();
-        scales.insert(mapping,scale);
-
-        self.config_updated=true;
-        self.bindings_updated=true;
-    }
-
-    pub fn set_dead<P,S>(&mut self,profile : P,mapping:M,primary_dead:f32,modifier_dead:f32)
-    where
-        P:IntoIterator<Item = S>,
-        S:AsRef<str>,
-    {
-        let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
-
-        if !self.user_data.deads.contains_key(&profile) {
-            if let Some(default_deads)=self.default_data.deads.get(&profile).cloned() {
-                self.user_data.deads.insert(profile.clone(), default_deads);
-            }
-        }
-
-        let deads=self.user_data.deads.entry(profile).or_default();
-        deads.insert(mapping,(primary_dead,modifier_dead));
-
-        self.config_updated=true;
-        self.bindings_updated=true;
-    }
-
-    pub fn set_binding<P,S,B>(&mut self,profile : P,mapping:M,binding_ind:usize,bindings:B,scale:f32)
-    where
-        P:IntoIterator<Item = S>,
-        S:AsRef<str>,
-        B:IntoIterator<Item = axis_input::Binding>,
-    {
-        let profile: Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
-
-        if !self.user_data.bindings.contains_key(&profile) {
-            if let Some(default_bindings)=self.default_data.bindings.get(&profile).cloned() {
-                self.user_data.bindings.insert(profile.clone(), default_bindings);
-            }
-        }
-
-        let user_bindings=self.user_data.bindings
-            .entry(profile).or_default()
-            .entry(mapping).or_default();
-
-        if user_bindings.len() < binding_ind+1 {
-            user_bindings.resize(binding_ind+1, Default::default());
-        }
-
-        user_bindings[binding_ind]=(bindings.into_iter().collect(),scale);
-
-        self.config_updated=true;
-        self.bindings_updated=true;
+        h
     }
 
     //
@@ -360,10 +232,237 @@ impl<M:Send+Sync+Hash+PartialEq+Eq+FromStr+Clone> InputConfig<M> {
             .unwrap_or_default()
     }
 
+    pub fn get_owner_profiles(self,owner:i32) -> HashSet<Vec<String>> {
+        self.user_data.owners_profiles.get(&owner).or_else(||self.default_data.owners_profiles.get(&owner))
+            .cloned().unwrap_or_default()
+    }
 
+    //
+    pub fn owner_insert_profile<P,S>(&mut self,owner:i32,profile : P)
+    where
+        P:IntoIterator<Item = S>,
+        S:AsRef<str>,
+    {
+        let profile: Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
 
+        if !self.user_data.owners_profiles.contains_key(&owner) {
+            let x=self.default_data.owners_profiles.get(&owner).cloned().unwrap_or_default();
+            self.user_data.owners_profiles.insert(owner,x);
+        }
 
+        self.user_data.owners_profiles.entry(owner).or_default().insert(profile);
 
+        //
+        // self.modified=true;
+        self.unapplied=true;
+        self.unsaved=true;
+    }
+
+    pub fn owner_remove_profile<P,S>(&mut self,owner:i32,profile : P)
+    where
+        P:IntoIterator<Item = S>,
+        S:AsRef<str>,
+    {
+        let profile: Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
+
+        let user_owner_profiles=self.user_data.owners_profiles.get_mut(&owner);
+
+        if user_owner_profiles.as_ref().map(|x|x.contains(&profile)).unwrap_or_default() {
+            user_owner_profiles.unwrap().remove(&profile);
+        } else if user_owner_profiles.is_none() {
+            if let Some(default_owner_profiles)=self.default_data.owners_profiles.get(&owner) {
+                if default_owner_profiles.contains(&profile) {
+                    let mut tmp_owner_profiles=default_owner_profiles.clone();
+                    tmp_owner_profiles.remove(&profile);
+                    self.user_data.owners_profiles.insert(owner, default_owner_profiles.clone());
+                }
+            }
+        }
+
+        //
+        // self.modified=true;
+        self.unapplied=true;
+        self.unsaved=true;
+    }
+
+    pub fn owner_clear_profiles(&mut self,owner:i32) {
+        if let Some(user_owner_profiles)=self.user_data.owners_profiles.get_mut(&owner) {
+            user_owner_profiles.clear();
+        } else if self.default_data.owners_profiles.contains_key(&owner) {
+            self.user_data.owners_profiles.insert(owner, Default::default());
+        }
+
+        //
+        // self.modified=true;
+        self.unapplied=true;
+        self.unsaved=true;
+    }
+
+    //
+    pub fn new_scales_profile<P,F,S,T>(&mut self,profile:P, from_profile : Option<F>, )
+    where
+        P:IntoIterator<Item = S>,
+        F:IntoIterator<Item = T>,
+        S:AsRef<str>,
+        T:AsRef<str>,
+    {
+        let from_profile:Option<Vec<String>>=from_profile.map(|y|y.into_iter().map(|x|x.as_ref().to_string()).collect());
+        let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
+
+        let new_scales=if let Some(from_profile)=from_profile {
+            if let Some(x)=self.user_data.scales.get(&from_profile) {
+                Some(x)
+            } else if let Some(x)=self.default_data.scales.get(&from_profile) {
+                Some(x)
+            } else {
+                None
+            }
+        } else {
+            None
+        }.cloned().unwrap_or_default();
+
+        self.user_data.scales.insert(profile,new_scales);
+
+        //
+        // self.modified=true;
+        self.unapplied=true;
+        self.unsaved=true;
+    }
+
+    pub fn new_deads_profile<P,F,S,T>(&mut self,profile:P, from_profile : Option<F>, )
+    where
+        P:IntoIterator<Item = S>,
+        F:IntoIterator<Item = T>,
+        S:AsRef<str>,
+        T:AsRef<str>,
+    {
+        let from_profile:Option<Vec<String>>=from_profile.map(|y|y.into_iter().map(|x|x.as_ref().to_string()).collect());
+        let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
+
+        let new_deads=if let Some(from_profile)=from_profile {
+            if let Some(x)=self.user_data.deads.get(&from_profile) {
+                Some(x)
+            } else if let Some(x)=self.default_data.deads.get(&from_profile) {
+                Some(x)
+            } else {
+                None
+            }
+        } else {
+            None
+        }.cloned().unwrap_or_default();
+
+        self.user_data.deads.insert(profile,new_deads);
+
+        //
+        // self.modified=true;
+        self.unapplied=true;
+        self.unsaved=true;
+    }
+
+    pub fn new_bindings_profile<P,F,S,T>(&mut self,profile:P, from_profile : Option<F>, )
+    where
+        P:IntoIterator<Item = S>,
+        F:IntoIterator<Item = T>,
+        S:AsRef<str>,
+        T:AsRef<str>,
+    {
+        let from_profile:Option<Vec<String>>=from_profile.map(|y|y.into_iter().map(|x|x.as_ref().to_string()).collect());
+        let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
+
+        let new_bindings=if let Some(from_profile)=from_profile {
+            if let Some(x)=self.user_data.bindings.get(&from_profile) {
+                Some(x)
+            } else if let Some(x)=self.default_data.bindings.get(&from_profile) {
+                Some(x)
+            } else {
+                None
+            }
+        } else {
+            None
+        }.cloned().unwrap_or_default();
+
+        self.user_data.bindings.insert(profile,new_bindings);
+
+        //
+        // self.modified=true;
+        self.unapplied=true;
+        self.unsaved=true;
+    }
+
+    //
+    pub fn set_scale<P,S>(&mut self,profile : P,mapping:M,scale:f32)
+    where
+        P:IntoIterator<Item = S>,
+        S:AsRef<str>,
+    {
+        let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
+
+        if !self.user_data.scales.contains_key(&profile) {
+            if let Some(default_scales)=self.default_data.scales.get(&profile).cloned() {
+                self.user_data.scales.insert(profile.clone(), default_scales);
+            }
+        }
+
+        let scales=self.user_data.scales.entry(profile).or_default();
+        scales.insert(mapping,scale);
+
+        //
+        // self.modified=true;
+        self.unapplied=true;
+        self.unsaved=true;
+    }
+
+    pub fn set_dead<P,S>(&mut self,profile : P,mapping:M,primary_dead:f32,modifier_dead:f32)
+    where
+        P:IntoIterator<Item = S>,
+        S:AsRef<str>,
+    {
+        let profile:Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
+
+        if !self.user_data.deads.contains_key(&profile) {
+            if let Some(default_deads)=self.default_data.deads.get(&profile).cloned() {
+                self.user_data.deads.insert(profile.clone(), default_deads);
+            }
+        }
+
+        let deads=self.user_data.deads.entry(profile).or_default();
+        deads.insert(mapping,(primary_dead,modifier_dead));
+
+        //
+        // self.modified=true;
+        self.unapplied=true;
+        self.unsaved=true;
+    }
+
+    pub fn set_binding<P,S,B>(&mut self,profile : P,mapping:M,binding_ind:usize,bindings:B,scale:f32)
+    where
+        P:IntoIterator<Item = S>,
+        S:AsRef<str>,
+        B:IntoIterator<Item = axis_input::Binding>,
+    {
+        let profile: Vec<String>=profile.into_iter().map(|x|x.as_ref().to_string()).collect();
+
+        if !self.user_data.bindings.contains_key(&profile) {
+            if let Some(default_bindings)=self.default_data.bindings.get(&profile).cloned() {
+                self.user_data.bindings.insert(profile.clone(), default_bindings);
+            }
+        }
+
+        let user_bindings=self.user_data.bindings
+            .entry(profile).or_default()
+            .entry(mapping).or_default();
+
+        if user_bindings.len() < binding_ind+1 {
+            user_bindings.resize(binding_ind+1, Default::default());
+        }
+
+        user_bindings[binding_ind]=(bindings.into_iter().collect(),scale);
+
+        //
+        // self.modified=true;
+        self.unapplied=true;
+        self.unsaved=true;
+    }
 }
 
    // pub fn clear_bindings<P,S,B>(&mut self,profile : P,mapping:M)

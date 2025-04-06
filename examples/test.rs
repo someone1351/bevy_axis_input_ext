@@ -1,11 +1,11 @@
 
-use std::collections::{HashMap, HashSet};
 
 use bevy::prelude::*;
 use bevy_axis_input::{self as axis_input, Binding,  };
 use bevy_axis_inputx as axis_inputx;
 
 use serde::Deserialize;
+
 
 #[derive(Clone,Debug,Deserialize,Hash,PartialEq,Eq,Ord,PartialOrd)]
 pub enum Mapping {
@@ -62,7 +62,10 @@ fn main() {
 
         .init_resource::<Menu>()
 
-        .add_systems(Startup, ( setup_input, setup_camera, setup_menu, ))
+        .add_systems(Startup, (
+            setup_input,
+            setup_camera, setup_menu,
+        ))
         .add_systems(PreUpdate, ( update_input, ).after(axis_input::InputMapSystem))
         .add_systems(Update, ( show_menu, ))
         ;

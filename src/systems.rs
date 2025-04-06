@@ -39,9 +39,12 @@ pub fn init<M:Send+Sync+Hash+Eq+FromStr+Any+Clone>( //+Debug
 
     //
     apply_input_map(&mut input_config, &mut input_map.owner_bindings);
+    input_map.bindings_updated=true;
 }
 
-pub fn update<M:Send+Sync+Hash+Eq+Any+Clone+FromStr+ToString>( //+Debug
+pub fn update<M:Send+Sync+Hash+Eq+Any+Clone+FromStr+ToString
+    // +std::fmt::Debug
+>(
     // asset_server: Res<AssetServer>,
     mut input_config: ResMut<InputConfig<M>>,
     mut input_map : ResMut<axis_input::InputMap<M>>,
@@ -59,7 +62,6 @@ pub fn update<M:Send+Sync+Hash+Eq+Any+Clone+FromStr+ToString>( //+Debug
         input_config.do_apply=false;
 
         apply_input_map(&mut input_config, &mut input_map.owner_bindings);
-
         input_map.bindings_updated=true;
     }
 }

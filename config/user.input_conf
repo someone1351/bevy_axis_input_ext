@@ -1,7 +1,11 @@
 binding "game"
     X
         Key(KeyW) 1
-        Key(KeyE) -1
+        Key(KeyT) -1
     Y
         Key(KeyA) 1
+
+owner 0
+    "game"
+    "ui"
 

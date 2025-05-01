@@ -1,7 +1,7 @@
 binding "game"
     X
-        Key(KeyW) 1
-        Key(KeyT) -1
+        Key(KeyT) 1
+        Key(KeyY) -1
     Y
         Key(KeyA) 1
 

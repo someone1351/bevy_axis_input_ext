@@ -2,7 +2,7 @@
 
 use bevy::prelude::*;
 use bevy_axis_input::{self as axis_input, Binding,  };
-use bevy_axis_inputx as axis_inputx;
+use bevy_axis_input_ext as axis_input_ext;
 
 use serde::Deserialize;
 
@@ -41,11 +41,11 @@ fn main() {
     app
         .add_plugins((
             DefaultPlugins
-                .set(AssetPlugin {watch_for_changes_override:Some(true), ..default() })
+            //     .set(AssetPlugin {watch_for_changes_override:Some(true), ..default() })
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "some input map".into(),
-                        resolution: (800.0, 600.0).into(),
+                        resolution: (800, 600).into(),
                         resizable: true,
                         ..default()
                     }),
@@ -53,7 +53,7 @@ fn main() {
                 }),
                 axis_input::InputMapPlugin::<Mapping>::default(),
 
-                axis_inputx::InputConfigPlugin::<Mapping> {
+                axis_input_ext::InputConfigPlugin::<Mapping> {
                     default_file_path: "config".to_string(),
                     user_file_path: "config".to_string(),
                     ..Default::default()
@@ -74,7 +74,7 @@ fn main() {
 }
 
 fn setup_input(
-    mut input_config: ResMut<axis_inputx::InputConfig<Mapping>>,
+    mut input_config: ResMut<axis_input_ext::InputConfig<Mapping>>,
 ) {
     input_config.owner_insert_profile(0, ["ui"]);
     input_config.owner_insert_profile(0, ["game"]);
@@ -84,11 +84,11 @@ fn setup_input(
 // struct CurBindModeBinds(Vec<Binding>);
 
 fn update_input(
-    mut input_map_event: EventReader<axis_input::InputMapEvent<Mapping>>,
-    mut exit: EventWriter<AppExit>,
+    mut input_map_event: MessageReader<axis_input::InputMapEvent<Mapping>>,
+    mut exit: MessageWriter<AppExit>,
     mut menu : ResMut<Menu>,
     mut input_map: ResMut<axis_input::InputMap<Mapping>>,
-    mut input_config: ResMut<axis_inputx::InputConfig<Mapping>>,
+    mut input_config: ResMut<axis_input_ext::InputConfig<Mapping>>,
     mut commands: Commands,
     gamepad_owner_query: Query<(Entity,&axis_input::GamepadOwner,)>,
     gamepad_ownerless_query:Query<Entity,(With<Gamepad>,Without<axis_input::GamepadOwner>)>,
@@ -228,7 +228,7 @@ fn setup_menu(
 
     commands.spawn((
         Text::default(),
-        TextLayout::new_with_justify(JustifyText::Center),
+        TextLayout::new_with_justify(Justify::Center),
         Node {align_self:AlignSelf::Center,justify_self:JustifySelf::Center,..Default::default()},
     )).with_child((
         TextSpan::new("\"Press Up/Down to navigate, Enter to select, Escape to cancel/clear binding.\""),
@@ -272,11 +272,11 @@ fn setup_menu(
 fn show_menu(
     mut marker_query: Query<(&MenuItem, &mut TextSpan, &mut TextColor)>,
     menu : Res<Menu>,
-    input_config: Res<axis_inputx::InputConfig<Mapping>>,
+    input_config: Res<axis_input_ext::InputConfig<Mapping>>,
 
     mut bind_mode_chain : Local<Vec<Binding>>,
 
-    mut input_map_event: EventReader<axis_input::InputMapEvent<Mapping>>,
+    mut input_map_event: MessageReader<axis_input::InputMapEvent<Mapping>>,
 ) {
 
     // let mut bind_mode_chain = Vec::new();

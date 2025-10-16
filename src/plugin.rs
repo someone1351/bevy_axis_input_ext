@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::{any::Any, str::FromStr,fmt::Debug,hash::Hash};
 
 use bevy::prelude::*;
+use bevy_axis_input::InputMapSystems;
 
 use super::resources::*;
 use super::systems::*;
@@ -41,10 +42,10 @@ impl<M:Sync+Send+Any+Clone+Eq+Hash+Debug+FromStr+ToString> bevy::app::Plugin for
 
             // .init_resource::<InputConfig<M>>()
             .add_systems(Startup, ( init::<M>, ))
-            .add_systems(Update,(
+            .add_systems(PreUpdate,(
                 update::<M>,
                 // on_modified::<M>, load::<M>,
-            ).chain())
+            ).chain().before(InputMapSystems))
         ;
     }
 }

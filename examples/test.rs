@@ -66,7 +66,7 @@ fn main() {
             setup_input,
             setup_camera, setup_menu,
         ))
-        .add_systems(PreUpdate, ( update_input, ).after(axis_input::InputMapSystem))
+        .add_systems(PreUpdate, ( update_input, ).after(axis_input::InputMapSystems))
         .add_systems(Update, ( show_menu, ))
         ;
 

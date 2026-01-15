@@ -1,9 +1,9 @@
 binding "game"
-    X
-        Key(KeyT) 1
-        Key(KeyB) -1
     Y
         Key(KeyA) 1
+    X
+        Key(KeyT) 1
+        Key(KeyQ) -1
 
 owner 0
     "game"
